@@ -37,6 +37,9 @@ export class HomePage {
   isFileUploading: boolean;
   isFileUploaded: boolean;
   private filesCollection: AngularFirestoreCollection<imgFile>;
+  fileName: any;
+  uploadedFileURL: Observable<any>;
+  fileSize: any;
   constructor(
     private afs: AngularFirestore,
     private afStorage: AngularFireStorage
@@ -47,6 +50,7 @@ export class HomePage {
     this.filesCollection = afs.collection<imgFile>('imagesCollection');
     this.files = this.filesCollection.valueChanges();
   }
+  // Carga de imagenes
   uploadImage(event: FileList) {
     const file: any = event.item(0);
     // Image validation
@@ -101,4 +105,130 @@ export class HomePage {
         console.log(err);
       });
   }
+  // Carga de archivos pdf
+  uploadFile(event: FileList) {
+    const file: any = event.item(0);
+    // Validación del archivo PDF
+    if (file.type !== 'application/pdf') {
+      console.log('Solo se permiten archivos PDF.');
+      return;
+    }
+  
+    this.isFileUploading = true;
+    this.isFileUploaded = false;
+    this.fileName = file.name;
+  
+    // Ruta de almacenamiento en Firebase Storage
+    const fileStoragePath = `filesStorage/${new Date().getTime()}_${file.name}`;
+  
+    // Referencia al archivo en Firebase Storage
+    const fileRef = this.afStorage.ref(fileStoragePath);
+  
+    // Tarea de carga del archivo
+    this.fileUploadTask = this.afStorage.upload(fileStoragePath, file);
+  
+    // Mostrar el progreso de carga
+    this.percentageVal = this.fileUploadTask.percentageChanges();
+    this.trackSnapshot = this.fileUploadTask.snapshotChanges().pipe(
+      finalize(() => {
+        // Obtener la URL del archivo cargado
+        this.uploadedFileURL = fileRef.getDownloadURL();
+        this.uploadedFileURL.subscribe(
+          (url) => {
+            this.storeFileMetadataInFirestore({
+              name: file.name,
+              filepath: url,
+              size: file.size,
+            });
+            this.isFileUploading = false;
+            this.isFileUploaded = true;
+          },
+          (error) => {
+            console.error('Error al obtener la URL del archivo:', error);
+          }
+        );
+      }),
+      tap((snapshot: any) => {
+        this.fileSize = snapshot.totalBytes;
+      })
+    );
+  }
+  
+  storeFileMetadataInFirestore(file: imgFile) {
+    const fileId = this.afs.createId();
+    this.filesCollection
+      .doc(fileId)
+      .set(file)
+      .then(() => {
+        console.log('Metadatos del archivo almacenados en Firestore.');
+      })
+      .catch((error) => {
+        console.error('Error al almacenar metadatos en Firestore:', error);
+      });
+  }
+
+  // Subir archivos .txt
+  // Carga de archivos txt
+uploadTextFile(event: FileList) {
+  const file: any = event.item(0);
+  // Validación del archivo de texto (.txt)
+  if (file.type !== 'text/plain') {
+    console.log('Solo se permiten archivos de texto (.txt).');
+    return;
+  }
+
+  this.isFileUploading = true;
+  this.isFileUploaded = false;
+  this.fileName = file.name;
+
+  // Ruta de almacenamiento en Firebase Storage
+  const fileStoragePath = `filesStorage/${new Date().getTime()}_${file.name}`;
+
+  // Referencia al archivo en Firebase Storage
+  const fileRef = this.afStorage.ref(fileStoragePath);
+
+  // Tarea de carga del archivo
+  this.fileUploadTask = this.afStorage.upload(fileStoragePath, file);
+
+  // Mostrar el progreso de carga
+  this.percentageVal = this.fileUploadTask.percentageChanges();
+  this.trackSnapshot = this.fileUploadTask.snapshotChanges().pipe(
+    finalize(() => {
+      // Obtener la URL del archivo cargado
+      this.uploadedFileURL = fileRef.getDownloadURL();
+      this.uploadedFileURL.subscribe(
+        (url) => {
+          this.storeFileMetadataInFirestore({
+            name: file.name,
+            filepath: url,
+            size: file.size,
+          });
+          this.isFileUploading = false;
+          this.isFileUploaded = true;
+        },
+        (error) => {
+          console.error('Error al obtener la URL del archivo:', error);
+        }
+      );
+    }),
+    tap((snapshot: any) => {
+      this.fileSize = snapshot.totalBytes;
+    })
+  );
+}
+
+// storeFileMetadataInFirestore(file: imgFile) {
+//   const fileId = this.afs.createId();
+//   this.filesCollection
+//     .doc(fileId)
+//     .set(file)
+//     .then(() => {
+//       console.log('Metadatos del archivo almacenados en Firestore.');
+//     })
+//     .catch((error) => {
+//       console.error('Error al almacenar metadatos en Firestore:', error);
+//     });
+// }
+
+
 }
