@@ -53,10 +53,20 @@ private filesCollection:
       if(file.type.split('/')[0]!=='image'){
       console.log('no se acepta este tipo de archivos');
       return;}
+      this.isFileUploading=true;
+      this.isFileUploaded=false;
+
+      this.imgName=file.name;
+
+      //Ruta en la nube
+      const fileStoragePath=
+      'fileStorage/${new Date().getTime()}_${file.name}';
+      //Imagen
+      const imageRef=this.afStorage.ref(fileStoragePath);
+      //tarea para subir el archivo
+      this.fileUploadTask=
+      this.afStorage.upload(fileStoragePath,file);
       
-
-
-
     }
 
 
